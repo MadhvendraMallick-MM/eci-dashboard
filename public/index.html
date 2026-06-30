@@ -1,0 +1,1358 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+<title>ECI Live Results Dashboard</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Rajdhani:wght@400;600;700;800&family=Share+Tech+Mono&display=swap');
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+
+/* ── THEMES ── */
+[data-theme="dark"]{
+  --bg:#070C16;--bg2:#0C1525;--surface:#111E33;--surface2:#182640;
+  --border:rgba(80,130,220,.18);--border2:rgba(80,130,220,.34);
+  --text:#EEF2FF;--text2:#C0CADF;--muted:#7A899E;--dim:#445066;
+  --accent:#FF6B00;--green:#22D37A;--red:#FF5A5A;--blue:#5DAAFF;--yellow:#FFD166;
+  --card-shadow:0 8px 32px rgba(0,0,0,.6);--toggle-bg:#182640;
+  --glow:0 0 0 1px rgba(80,130,220,.25),0 4px 20px rgba(0,0,0,.5);
+}
+[data-theme="light"]{
+  --bg:#F1F5F9;--bg2:#FFFFFF;--surface:rgba(0,0,0,.025);--surface2:rgba(0,0,0,.05);
+  --border:rgba(0,0,0,.09);--border2:rgba(0,0,0,.18);
+  --text:#0F172A;--text2:#1E293B;--muted:#64748B;--dim:#94A3B8;
+  --accent:#E05A00;--green:#059669;--red:#DC2626;--blue:#2563EB;--yellow:#D97706;
+  --card-shadow:0 2px 12px rgba(0,0,0,.09);--toggle-bg:#E2E8F0;
+}
+
+body{background:var(--bg);color:var(--text);font-family:'Rajdhani',sans-serif;min-height:100vh;transition:background .25s,color .25s}
+::-webkit-scrollbar{width:4px;height:4px}
+::-webkit-scrollbar-thumb{background:var(--border2);border-radius:2px}
+
+/* ── COUNTDOWN STRIP ── */
+.cd-strip{background:var(--bg2);border-bottom:1px solid var(--border);padding:5px 20px;display:flex;align-items:center;gap:10px}
+.cd-label{font-family:'Share Tech Mono',monospace;font-size:9px;color:var(--dim);letter-spacing:2px;white-space:nowrap}
+.cd-track{flex:1;max-width:160px;height:3px;background:var(--border2);border-radius:2px;overflow:hidden}
+.cd-fill{height:100%;border-radius:2px;background:var(--accent);transition:width 1s linear}
+.cd-num{font-family:'Share Tech Mono',monospace;font-size:11px;font-weight:800;color:var(--accent);min-width:26px}
+.cd-sep{width:1px;height:14px;background:var(--border);margin:0 4px}
+.cd-last{font-family:'Share Tech Mono',monospace;font-size:9px;color:var(--dim);letter-spacing:1px}
+
+/* ── TICKER ── */
+.ticker-wrap{overflow:hidden;background:rgba(255,107,0,.06);border-bottom:1px solid rgba(255,107,0,.18);padding:5px 0}
+.ticker-inner{display:inline-block;white-space:nowrap;animation:tick 44s linear infinite;font-family:'Share Tech Mono',monospace;font-size:10px;color:var(--accent);letter-spacing:.5px}
+@keyframes tick{0%{transform:translateX(0)}100%{transform:translateX(-50%)}}
+
+/* ── HEADER ── */
+header{background:var(--bg2);border-bottom:1px solid var(--border);padding:10px 20px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;position:sticky;top:0;z-index:100;box-shadow:var(--card-shadow)}
+.logo{display:flex;align-items:center;gap:10px}
+.logo-icon{width:42px;height:42px;border-radius:10px;background:linear-gradient(135deg,#FF6B00,#FF9500);display:flex;align-items:center;justify-content:center;font-size:20px;box-shadow:0 0 16px rgba(255,107,0,.4)}
+.logo-title{font-size:18px;font-weight:800;letter-spacing:3px}
+.logo-sub{font-family:'Share Tech Mono',monospace;font-size:9px;color:var(--muted);letter-spacing:2px}
+.hdr-right{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.live-badge{display:flex;align-items:center;gap:5px;font-family:'Share Tech Mono',monospace;font-size:10px;color:var(--green);font-weight:700}
+.live-dot{width:8px;height:8px;border-radius:50%;background:var(--green);animation:pulse 1.4s infinite}
+@keyframes pulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.3;transform:scale(.5)}}
+.btn-sm{background:var(--surface2);border:1px solid var(--border);color:var(--muted);border-radius:7px;padding:5px 12px;font-family:'Share Tech Mono',monospace;font-size:9px;cursor:pointer;letter-spacing:1px;transition:all .15s}
+.btn-sm:hover{border-color:var(--accent);color:var(--accent)}
+.theme-toggle{display:flex;align-items:center;gap:6px;cursor:pointer;padding:5px 10px;border-radius:20px;background:var(--toggle-bg);border:1px solid var(--border);user-select:none}
+.theme-toggle span{font-family:'Share Tech Mono',monospace;font-size:9px;color:var(--muted);letter-spacing:1px}
+.tog-track{width:30px;height:17px;border-radius:9px;background:var(--border2);position:relative;transition:background .2s}
+.tog-track.on{background:var(--accent)}
+.tog-thumb{width:13px;height:13px;border-radius:50%;background:#fff;position:absolute;top:2px;left:2px;transition:left .2s}
+.tog-thumb.on{left:15px}
+
+/* ── URL BAR ── */
+.url-bar{background:var(--bg2);border-bottom:1px solid var(--border);padding:8px 20px;display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.url-label{font-family:'Share Tech Mono',monospace;font-size:9px;color:var(--dim);letter-spacing:2px;white-space:nowrap}
+#eciUrl{flex:1;min-width:220px;background:var(--surface2);border:1px solid var(--border);border-radius:7px;padding:7px 11px;color:var(--text);font-family:'Share Tech Mono',monospace;font-size:11px;outline:none;transition:border .15s}
+#eciUrl:focus{border-color:var(--accent)}
+.btn-fetch{background:var(--accent);border:none;color:#fff;border-radius:7px;padding:7px 16px;font-family:'Share Tech Mono',monospace;font-size:11px;cursor:pointer;font-weight:800;letter-spacing:1px;transition:opacity .15s}
+.btn-fetch:hover{opacity:.85}
+.btn-fetch:disabled{opacity:.4;cursor:not-allowed}
+
+/* ── FILTER BAR ── */
+.filter-bar{background:var(--bg2);border-bottom:1px solid var(--border);padding:6px 20px;display:flex;align-items:center;gap:5px;flex-wrap:wrap;position:sticky;top:62px;z-index:99}
+.f-label{font-family:'Share Tech Mono',monospace;font-size:9px;color:var(--dim);letter-spacing:2px;white-space:nowrap}
+.f-pill{background:var(--surface2);border:1px solid var(--border);color:var(--muted);border-radius:5px;padding:3px 10px;font-family:'Share Tech Mono',monospace;font-size:9px;cursor:pointer;letter-spacing:1px;transition:all .12s;white-space:nowrap;text-decoration:none;display:inline-block;font-weight:600}
+.f-pill:hover,.f-pill.active{background:rgba(255,107,0,.16);border-color:var(--accent);color:var(--accent);box-shadow:0 0 10px rgba(255,107,0,.35)}
+.f-pill.og-btn{color:var(--blue);border-color:rgba(96,165,250,.4);background:rgba(96,165,250,.08)}
+.f-pill.og-btn:hover{background:rgba(96,165,250,.18);border-color:var(--blue)}
+.f-pill.tally-btn{color:var(--green);border-color:rgba(34,211,122,.4);background:rgba(34,211,122,.07)}
+.f-pill.tally-btn:hover{background:rgba(34,211,122,.16);border-color:var(--green)}
+.f-sep{width:1px;height:18px;background:var(--border);margin:0 3px;flex-shrink:0}
+
+/* ── PAGES ── */
+.page{display:none;padding:18px 20px;animation:fadeIn .2s ease}
+.page.active{display:block}
+@keyframes fadeIn{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:translateY(0)}}
+
+/* ── STATUS BAR ── */
+.status-bar{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:12px 16px;margin-bottom:14px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px}
+.ac-name{font-size:20px;font-weight:800;letter-spacing:2px}
+.ac-meta{font-family:'Share Tech Mono',monospace;font-size:10px;color:var(--muted);margin-top:3px}
+.round-pill{background:rgba(255,107,0,.12);border:1px solid rgba(255,107,0,.3);color:var(--accent);border-radius:20px;padding:4px 14px;font-family:'Share Tech Mono',monospace;font-size:10px;letter-spacing:1px;font-weight:700}
+
+/* ── WINNER BANNER ── */
+.w-banner{border-radius:12px;padding:16px 20px;margin-bottom:14px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:14px;border:1px solid}
+.w-cand{font-size:24px;font-weight:800;letter-spacing:1px}
+.w-party{font-family:'Share Tech Mono',monospace;font-size:10px;margin-top:3px;color:var(--muted);letter-spacing:1px;font-weight:600}
+.w-votes{font-size:38px;font-weight:800;line-height:1}
+.w-votes-label{font-family:'Share Tech Mono',monospace;font-size:9px;color:var(--muted);margin-top:4px;letter-spacing:1px}
+.w-margin{font-size:28px;font-weight:800;color:var(--green)}
+.w-margin-label{font-family:'Share Tech Mono',monospace;font-size:9px;color:var(--muted);margin-top:4px;letter-spacing:1px}
+
+/* ── OG BANNER ── */
+.og-banner{background:rgba(96,165,250,.07);border:1px solid rgba(96,165,250,.25);border-left:3px solid var(--blue);border-radius:10px;padding:12px 16px;margin-bottom:14px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px}
+.og-banner-title{font-family:'Share Tech Mono',monospace;font-size:9px;color:var(--blue);letter-spacing:2px;font-weight:700;margin-bottom:4px}
+.og-banner-val{font-size:20px;font-weight:800;color:var(--blue)}
+.og-banner-note{font-family:'Share Tech Mono',monospace;font-size:9px;color:var(--dim);margin-top:2px}
+
+/* ── STAT CARDS ── */
+.cards-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(155px,1fr));gap:10px;margin-bottom:14px}
+.stat-card{background:var(--surface);border:1px solid var(--border);border-left:3px solid var(--accent);border-radius:10px;padding:14px 16px;transition:transform .15s,box-shadow .15s;box-shadow:var(--glow,var(--card-shadow))}
+.stat-card:hover{transform:translateY(-1px);box-shadow:var(--card-shadow)}
+.sc-label{font-family:'Share Tech Mono',monospace;font-size:9px;color:var(--muted);letter-spacing:2px;margin-bottom:5px;font-weight:700;text-transform:uppercase}
+.sc-val{font-size:30px;font-weight:800;line-height:1}
+.sc-sub{font-family:'Share Tech Mono',monospace;font-size:9px;color:var(--muted);margin-top:4px}
+
+/* ── TABLE ── */
+.tbl-wrap{background:var(--surface);border:1px solid var(--border);border-radius:10px;overflow:hidden;margin-bottom:14px;box-shadow:var(--glow,var(--card-shadow))}
+.sec-title{padding:10px 16px;border-bottom:1px solid var(--border);font-family:'Share Tech Mono',monospace;font-size:9px;color:var(--muted);letter-spacing:2px;display:flex;align-items:center;justify-content:space-between;font-weight:700;text-transform:uppercase}
+.tbl-scroll{overflow-x:auto}
+table{width:100%;border-collapse:collapse;font-family:'Share Tech Mono',monospace;font-size:11px}
+thead tr{background:var(--surface2)}
+th{padding:9px 12px;text-align:left;color:var(--dim);font-weight:700;letter-spacing:1px;white-space:nowrap;text-transform:uppercase;font-size:9px}
+th.r{text-align:right}
+td{padding:8px 12px;border-top:1px solid var(--border);vertical-align:middle}
+td.r{text-align:right;font-variant-numeric:tabular-nums}
+tr.lead-row{background:linear-gradient(90deg,rgba(255,107,0,.10),rgba(255,107,0,.02))}
+tr:hover td{background:var(--surface2)}
+/* party dot — bigger, glowing */
+.pdot{width:11px;height:11px;border-radius:50%;display:inline-block;margin-right:6px;flex-shrink:0;box-shadow:0 0 9px 2px currentColor;border:1.5px solid rgba(255,255,255,.18)}
+/* vote bar */
+.vbar-bg{height:6px;background:var(--surface2);border-radius:3px;margin-top:3px;min-width:60px}
+.vbar-fill{height:7px;border-radius:4px;transition:width .7s ease;filter:brightness(1.15) saturate(1.3)}
+/* badges */
+.badge{display:inline-block;font-size:8px;font-weight:700;padding:2px 6px;border-radius:3px;margin-left:5px;vertical-align:middle;letter-spacing:1px;font-family:'Share Tech Mono',monospace}
+.badge-lead{background:rgba(255,107,0,.2);color:var(--accent);border:1px solid rgba(255,107,0,.4)}
+.badge-og{background:rgba(96,165,250,.18);color:var(--blue);border:1px solid rgba(96,165,250,.35)}
+.badge-eci{background:rgba(34,211,122,.12);color:var(--green);border:1px solid rgba(34,211,122,.3)}
+
+/* candidate / party text styling */
+.cand-lead{color:var(--text);font-weight:800;font-size:12px}
+.cand-normal{color:var(--text2);font-weight:600;font-size:11px}
+.party-tag{font-family:'Share Tech Mono',monospace;font-size:10px;font-weight:700;letter-spacing:.5px}
+
+/* ── ANALYTICS ── */
+.a-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px}
+.a-card{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:16px;overflow:hidden;box-shadow:var(--glow,var(--card-shadow));transition:box-shadow .2s}
+.a-card.full{grid-column:1/-1}
+.a-title{font-family:'Share Tech Mono',monospace;font-size:9px;color:var(--muted);letter-spacing:2px;margin-bottom:10px;font-weight:700;text-transform:uppercase}
+.pb-row{display:flex;align-items:center;gap:8px;margin-bottom:8px}
+.pb-label{font-family:'Share Tech Mono',monospace;font-size:10px;color:var(--text2);width:150px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-weight:600}
+.pb-track{flex:1;height:10px;background:var(--surface2);border-radius:5px;overflow:hidden}
+.pb-fill{height:100%;border-radius:5px;transition:width .7s ease;filter:brightness(1.1) saturate(1.3)}
+.pb-pct{font-family:'Share Tech Mono',monospace;font-size:10px;width:36px;text-align:right;font-weight:700}
+.mom{font-size:13px;margin-left:2px}
+.dom-bar{display:flex;height:26px;border-radius:7px;overflow:hidden;gap:2px;margin-top:8px}
+.dom-seg{display:flex;align-items:center;justify-content:center;font-family:'Share Tech Mono',monospace;font-size:9px;color:#fff;font-weight:800;overflow:hidden;transition:width .7s ease}
+.map-container{border:1px solid var(--border);border-radius:8px;overflow:hidden;background:var(--surface)}
+.insight-row{font-family:'Share Tech Mono',monospace;font-size:10px;color:var(--text2);padding:7px 0;border-bottom:1px solid var(--border);line-height:1.6}
+.insight-row:last-child{border-bottom:none}
+
+
+/* ── ML ANALYTICS ── */
+.ml-wrap{padding:0}
+.ml-tabs{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:18px}
+.ml-tab{font-family:'Share Tech Mono',monospace;font-size:10px;font-weight:700;padding:8px 15px;border-radius:9px;border:1px solid var(--border2);background:var(--surface2);color:var(--muted);cursor:pointer;letter-spacing:1px;transition:all .15s;display:flex;align-items:center;gap:5px}
+.ml-tab:hover{border-color:var(--accent);color:var(--accent)}
+.ml-tab.active{background:var(--accent);border-color:var(--accent);color:#fff;box-shadow:0 0 16px rgba(255,107,0,.5)}
+.ml-pane{display:none;animation:fadeIn .22s ease}
+.ml-pane.active{display:block}
+
+/* Conclusion card */
+.verdict-wrap{border-radius:16px;padding:22px 26px;margin-bottom:20px;border:1px solid;box-shadow:var(--glow,var(--card-shadow));position:relative;overflow:hidden}
+.verdict-wrap::before{content:'';position:absolute;inset:0;background:radial-gradient(ellipse at top left,var(--v-glow) 0%,transparent 65%);pointer-events:none}
+.verdict-badge{display:inline-flex;align-items:center;gap:8px;padding:5px 16px;border-radius:20px;font-family:'Share Tech Mono',monospace;font-size:11px;font-weight:800;letter-spacing:2px;margin-bottom:14px}
+.verdict-headline{font-family:'Rajdhani',sans-serif;font-size:26px;font-weight:800;letter-spacing:1px;line-height:1.2;margin-bottom:8px}
+.verdict-body{font-family:'Share Tech Mono',monospace;font-size:11px;color:var(--text2);line-height:1.75;max-width:800px}
+.verdict-stats{display:flex;flex-wrap:wrap;gap:20px;margin-top:16px;padding-top:14px;border-top:1px solid rgba(255,255,255,.06)}
+.vstat{display:flex;flex-direction:column;gap:3px}
+.vstat-label{font-family:'Share Tech Mono',monospace;font-size:8px;color:var(--muted);letter-spacing:2px;text-transform:uppercase}
+.vstat-val{font-family:'Share Tech Mono',monospace;font-size:16px;font-weight:800}
+
+/* MC Histogram */
+.mc-hist-wrap{position:relative}
+.mc-hist-tip{position:absolute;background:var(--bg2);border:1px solid var(--border2);border-radius:7px;padding:6px 10px;font-family:'Share Tech Mono',monospace;font-size:10px;color:var(--text);pointer-events:none;display:none;z-index:50;white-space:nowrap}
+
+/* Bayesian chart */
+.bayes-legend{display:flex;flex-wrap:wrap;gap:12px;margin-top:8px}
+.bayes-leg-item{display:flex;align-items:center;gap:5px;font-family:'Share Tech Mono',monospace;font-size:9px;font-weight:700;cursor:pointer;user-select:none;opacity:1;transition:opacity .2s}
+.bayes-leg-item.muted{opacity:.35}
+
+/* Anomaly table */
+.anomaly-row-hi{background:rgba(255,90,90,.08)!important}
+.anomaly-row-lo{background:rgba(93,170,255,.08)!important}
+.z-badge{font-family:'Share Tech Mono',monospace;font-size:10px;font-weight:700;padding:2px 7px;border-radius:4px;display:inline-block}
+.z-hi{background:rgba(255,90,90,.2);color:var(--red);border:1px solid rgba(255,90,90,.4)}
+.z-lo{background:rgba(93,170,255,.18);color:var(--blue);border:1px solid rgba(93,170,255,.35)}
+.z-ok{background:rgba(34,211,122,.1);color:var(--green);border:1px solid rgba(34,211,122,.25)}
+
+/* Model selector pill inside pane */
+.sub-pills{display:flex;gap:5px;flex-wrap:wrap;margin-bottom:12px}
+.sub-pill{font-family:'Share Tech Mono',monospace;font-size:9px;font-weight:700;padding:4px 10px;border-radius:6px;border:1px solid var(--border2);background:var(--surface2);color:var(--muted);cursor:pointer;transition:all .12s}
+.sub-pill:hover,.sub-pill.on{background:var(--surface);border-color:var(--blue);color:var(--blue)}
+
+/* Tooltip */
+#ml-tip{position:fixed;background:var(--bg2);border:1px solid var(--border2);border-radius:8px;padding:7px 12px;font-family:'Share Tech Mono',monospace;font-size:10px;color:var(--text);z-index:9999;pointer-events:none;display:none;box-shadow:0 4px 20px rgba(0,0,0,.4);white-space:nowrap}
+
+/* Confidence band labels */
+.ci-label{font-family:'Share Tech Mono',monospace;font-size:9px;font-weight:700}
+
+@keyframes fadeIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+/* ── MESSAGES ── */
+.msg{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;padding:60px;color:var(--muted);font-family:'Share Tech Mono',monospace;font-size:11px;text-align:center}
+.spinner{width:24px;height:24px;border:2px solid var(--border);border-top-color:var(--accent);border-radius:50%;animation:spin .8s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+.err-box{background:rgba(248,113,113,.07);border:1px solid rgba(248,113,113,.3);border-radius:8px;padding:12px 16px;color:var(--red);white-space:pre-line;line-height:1.7;max-width:460px}
+
+/* ── TOAST ── */
+.toast-el{position:fixed;bottom:22px;left:50%;transform:translateX(-50%) translateY(80px);font-family:'Share Tech Mono',monospace;font-size:11px;font-weight:700;padding:9px 20px;border-radius:20px;z-index:999;letter-spacing:1px;pointer-events:none;transition:transform .25s ease;white-space:nowrap}
+.toast-el.show{transform:translateX(-50%) translateY(0)}
+
+.footer{padding:8px 20px;border-top:1px solid var(--border);font-family:'Share Tech Mono',monospace;font-size:9px;color:var(--dim);display:flex;justify-content:space-between;flex-wrap:wrap;gap:4px}
+
+@media(max-width:640px){.a-grid{grid-template-columns:1fr}.a-card.full{grid-column:1}}
+</style>
+</head>
+<body>
+
+<!-- COUNTDOWN STRIP -->
+<div class="cd-strip">
+  <span class="cd-label">AUTO-REFRESH IN</span>
+  <div class="cd-track"><div class="cd-fill" id="cdFill" style="width:100%"></div></div>
+  <span class="cd-num" id="cdNum">120s</span>
+  <div class="cd-sep"></div>
+  <span class="cd-last" id="cdLast">—</span>
+</div>
+
+<!-- TICKER -->
+<div id="ml-tip"></div>
+<div class="ticker-wrap"><div class="ticker-inner" id="ticker">ECI Live Results Dashboard · Paste any ECI Roundwise URL and click FETCH · results.eci.gov.in &nbsp;•&nbsp; ECI Live Results Dashboard · Paste any ECI Roundwise URL and click FETCH &nbsp;•&nbsp;</div></div>
+
+<!-- HEADER -->
+<header>
+  <div class="logo">
+    <div class="logo-icon">🗳️</div>
+    <div>
+      <div class="logo-title">ECI LIVE RESULTS</div>
+      <div class="logo-sub">ELECTION COMMISSION OF INDIA — ROUND-WISE LIVE COUNT</div>
+    </div>
+  </div>
+  <div class="hdr-right">
+    <div class="live-badge"><div class="live-dot"></div><span id="liveLabel">READY</span></div>
+    <button class="btn-sm" onclick="doFetch()" id="refreshBtn">⟳ REFRESH</button>
+    <div class="theme-toggle" onclick="toggleTheme()">
+      <span id="thmLabel">DARK</span>
+      <div class="tog-track on" id="togTrack"><div class="tog-thumb on" id="togThumb"></div></div>
+    </div>
+  </div>
+</header>
+
+<!-- URL BAR -->
+<div class="url-bar">
+  <span class="url-label">ECI URL:</span>
+  <input id="eciUrl" type="text" value="https://results.eci.gov.in/ResultAcGenMay2026/RoundwiseS2286.htm?ac=86" spellcheck="false"/>
+  <button class="btn-fetch" id="fetchBtn" onclick="doFetch()">▶ FETCH LIVE DATA</button>
+</div>
+
+<!-- FILTER / STICKY NAV BAR -->
+<div class="filter-bar">
+  <span class="f-label">VIEW:</span>
+  <span class="f-pill active" id="tabP1" onclick="switchPage('p1',this)">📊 DASHBOARD</span>
+  <span class="f-pill" id="tabP2" onclick="switchPage('p2',this)">🔬 ANALYTICS</span>
+  <div class="f-sep"></div>
+  <span class="f-label">ROUND:</span>
+  <div id="roundPills" style="display:flex;gap:4px;flex-wrap:wrap"></div>
+  <div class="f-sep"></div>
+  <span class="f-pill og-btn" onclick="refreshOG()">🔄 OG REFRESH</span>
+  <a href="/tally" target="_blank" style="text-decoration:none">
+    <span class="f-pill tally-btn">📱 TALLY APP</span>
+  </a>
+</div>
+
+<!-- PAGE 1: DASHBOARD -->
+<div class="page active" id="p1">
+  <div id="dashContent">
+    <div class="msg"><div class="spinner"></div><span>Connecting to ECI server…</span></div>
+  </div>
+</div>
+
+<!-- PAGE 2: ANALYTICS -->
+<div class="page" id="p2">
+  <div id="analyticsContent">
+    <div class="msg"><span>Fetch ECI data first to see analytics.</span></div>
+  </div>
+</div>
+
+<!-- TOAST -->
+<div class="toast-el" id="toastEl"></div>
+
+<div class="footer">
+  <span id="lastUpdated">Last updated: —</span>
+  <span>ECI RESULTS DASHBOARD v4.0 · results.eci.gov.in</span>
+</div>
+
+<script>
+// ── GLOBAL STATE ─────────────────────────────────────────────────────────────
+let STATE       = { acName:'', roundStatus:'', lastUpdated:'', rounds:[], selectedRound:null, ogKey:null };
+let OG_DATA     = {};   // { roundNum: { candidateName: count } }
+let currentPage = 'p1';
+let dashWS      = null;
+let cdTimer     = null;
+const CD_SECS   = 120;
+
+// ── THEME ─────────────────────────────────────────────────────────────────────
+function toggleTheme() {
+  const html  = document.documentElement;
+  const dark  = html.dataset.theme === 'dark';
+  html.dataset.theme = dark ? 'light' : 'dark';
+  document.getElementById('thmLabel').textContent = dark ? 'LIGHT' : 'DARK';
+  document.getElementById('togTrack').classList.toggle('on', !dark);
+  document.getElementById('togThumb').classList.toggle('on', !dark);
+}
+
+// ── COUNTDOWN ─────────────────────────────────────────────────────────────────
+function startCountdown() {
+  clearInterval(cdTimer);
+  let secs = CD_SECS;
+  const fill = document.getElementById('cdFill');
+  const num  = document.getElementById('cdNum');
+  fill.style.width = '100%';
+  num.textContent  = CD_SECS + 's';
+  cdTimer = setInterval(() => {
+    secs--;
+    fill.style.width = (secs / CD_SECS * 100) + '%';
+    num.textContent  = secs + 's';
+    if (secs <= 0) { clearInterval(cdTimer); doFetch(); }
+  }, 1000);
+}
+
+// ── PAGE SWITCH (no URL change, no scroll) ────────────────────────────────────
+function switchPage(id, el) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('[id^="tab"]').forEach(p => p.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+  el.classList.add('active');
+  currentPage = id;
+  if (id === 'p2') renderAnalytics();
+}
+
+// ── ROUND PILLS ───────────────────────────────────────────────────────────────
+function buildRoundPills() {
+  const c = document.getElementById('roundPills');
+  c.innerHTML = STATE.rounds.map(r =>
+    `<span class="f-pill r-pill${r.round===STATE.selectedRound?' active':''}" data-r="${r.round}" onclick="selectRound(${r.round})">R${r.round}</span>`
+  ).join('');
+}
+function selectRound(r) {
+  STATE.selectedRound = r;
+  document.querySelectorAll('.r-pill').forEach(b => b.classList.toggle('active', parseInt(b.dataset.r) === r));
+  renderDashboard();
+}
+
+// ── OG REFRESH ────────────────────────────────────────────────────────────────
+async function refreshOG() {
+  if (!STATE.ogKey) { showToast('Fetch ECI data first', true); return; }
+  try {
+    const res  = await fetch('/api/og?key=' + encodeURIComponent(STATE.ogKey));
+    const data = await res.json();
+    OG_DATA = {};
+    Object.entries(data).forEach(([r, cands]) => {
+      OG_DATA[String(r)] = {};
+      Object.entries(cands).forEach(([name, v]) => { OG_DATA[String(r)][String(name).trim()] = parseInt(v) || 0; });
+    });
+    renderDashboard();
+    if (currentPage === 'p2') renderAnalytics();
+    showToast('✅ OG data refreshed');
+  } catch(e) { showToast('OG refresh failed', true); }
+}
+
+// ── FETCH ECI ─────────────────────────────────────────────────────────────────
+async function doFetch() {
+  const url = document.getElementById('eciUrl').value.trim();
+  if (!url) return;
+  setLoading(true);
+  try {
+    const res  = await fetch('/api/results?url=' + encodeURIComponent(url));
+    const data = await res.json();
+    if (data.error) throw new Error(data.error);
+    STATE = { ...data, selectedRound: data.rounds[data.rounds.length-1]?.round || 1, ogKey: data.ogKey };
+    buildRoundPills();
+    // Pull OG silently
+    if (data.ogKey) {
+      const ogRes  = await fetch('/api/og?key=' + encodeURIComponent(data.ogKey));
+      const ogData = await ogRes.json();
+      OG_DATA = {};
+      Object.entries(ogData).forEach(([r, cands]) => {
+        OG_DATA[String(r)] = {};
+        Object.entries(cands).forEach(([name, v]) => { OG_DATA[String(r)][String(name).trim()] = parseInt(v) || 0; });
+      });
+    }
+    renderDashboard();
+    if (currentPage === 'p2') renderAnalytics();
+    updateTicker();
+    document.getElementById('liveLabel').textContent = 'LIVE';
+    document.getElementById('lastUpdated').textContent = 'Last updated: ' + data.lastUpdated;
+    document.getElementById('cdLast').textContent = 'Last fetch: ' + new Date().toLocaleTimeString('en-IN');
+    startCountdown();
+  } catch(e) {
+    document.getElementById('dashContent').innerHTML =
+      `<div class="msg"><div class="err-box">${e.message}</div></div>`;
+    document.getElementById('liveLabel').textContent = 'ERROR';
+    startCountdown();
+  } finally { setLoading(false); }
+}
+
+function setLoading(on) {
+  const fb = document.getElementById('fetchBtn');
+  const rb = document.getElementById('refreshBtn');
+  fb.disabled = rb.disabled = on;
+  fb.textContent = on ? 'FETCHING…' : '▶ FETCH LIVE DATA';
+  if (on) document.getElementById('dashContent').innerHTML =
+    `<div class="msg"><div class="spinner"></div><span>Fetching from ECI server…</span></div>`;
+}
+
+function updateTicker() {
+  if (!STATE.rounds.length) return;
+  const last = STATE.rounds[STATE.rounds.length-1];
+  const top4 = [...last.candidates].sort((a,b)=>b.total-a.total).slice(0,4);
+  const t = top4.map(c=>`${c.candidate} (${c.partyShort}): ${c.total.toLocaleString()} votes`).join('  •  ')
+    + '  •  ' + STATE.acName + ' · EVM Rounds: ' + STATE.roundStatus + '  •  ';
+  document.getElementById('ticker').textContent = t + t;
+}
+
+// ── PAGE 1: DASHBOARD ─────────────────────────────────────────────────────────
+function renderDashboard() {
+  const { acName, roundStatus, rounds, selectedRound } = STATE;
+  if (!rounds.length) return;
+  const rnd    = rounds.find(r => r.round === selectedRound) || rounds[rounds.length-1];
+  const sorted = [...rnd.candidates].sort((a,b) => b.total - a.total);
+  const leader = sorted[0], runner = sorted[1];
+  const margin = leader && runner ? leader.total - runner.total : 0;
+  const eciTotal = sorted.reduce((s,c) => s + c.total, 0);  // ECI total only
+  const maxV   = sorted[0]?.total || 1;
+
+  // OG data — string key, trim candidate names for robust matching
+  const ogRound = OG_DATA[String(rnd.round)] || {};
+  // fuzzy getOG: exact match first, then trimmed lowercase fallback
+  function getOG(name) {
+    const exact = ogRound[name];
+    if (exact !== undefined) return parseInt(exact) || 0;
+    const lc = String(name).trim().toLowerCase();
+    for (const [k,v] of Object.entries(ogRound)) {
+      if (String(k).trim().toLowerCase() === lc) return parseInt(v) || 0;
+    }
+    return 0;
+  }
+  const hasOG    = Object.values(ogRound).some(v => parseInt(v) > 0);
+  const ogTotal  = Object.values(ogRound).reduce((s,v) => s + (parseInt(v)||0), 0);
+  const ogSorted = hasOG
+    ? [...sorted].sort((a,b) => getOG(b.candidate) - getOG(a.candidate))
+    : [];
+  const ogLeader = ogSorted[0];
+
+  // ── CANDIDATE TABLE ROWS ──
+  const rows = sorted.map((c, i) => {
+    const pct  = eciTotal ? ((c.total / eciTotal) * 100).toFixed(1) : '0.0';
+    const barW = Math.round((c.total / maxV) * 100);
+    const ogV  = getOG(c.candidate);
+    const isLead = i === 0;
+    return `<tr class="${isLead ? 'lead-row' : ''}">
+      <td style="color:var(--dim);font-weight:700;font-size:13px">${i+1}</td>
+      <td>
+        <span class="${isLead ? 'cand-lead' : 'cand-normal'}" style="${isLead ? 'color:' + c.color : ''}">${c.candidate}</span>
+        ${isLead ? '<span class="badge badge-lead">LEADING</span>' : ''}
+      </td>
+      <td>
+        <span class="pdot" style="background:${c.color};box-shadow:0 0 7px ${c.color}"></span>
+        <span class="party-tag" style="color:${c.color}">${c.partyShort}</span>
+      </td>
+      <td class="r" style="color:var(--dim)">${c.brought.toLocaleString()}</td>
+      <td class="r" style="color:${c.current > 0 ? 'var(--green)' : 'var(--dim)'};font-weight:${c.current > 0 ? 700 : 400}">
+        ${c.current > 0 ? '+' : ''}${c.current.toLocaleString()}
+      </td>
+      <td class="r">
+        <span style="font-weight:800;font-size:13px;color:${isLead ? c.color : 'var(--text2)'}">${c.total.toLocaleString()}</span>
+        <span class="badge badge-eci">ECI</span>
+      </td>
+      <td class="r">
+        ${ogV > 0
+          ? `<span style="font-weight:800;font-size:13px;color:var(--blue)">${ogV.toLocaleString()}</span><span class="badge badge-og">OG</span>`
+          : `<span style="color:var(--dim)">—</span>`}
+      </td>
+      <td style="min-width:90px">
+        <div class="vbar-bg"><div class="vbar-fill" style="width:${barW}%;background:${c.color};box-shadow:0 0 4px ${c.color}66"></div></div>
+        <div style="font-family:'Share Tech Mono',monospace;font-size:9px;color:var(--muted);margin-top:2px;font-weight:600">${pct}%</div>
+      </td>
+    </tr>`;
+  }).join('');
+
+  // ── ROUND TREND TABLE (top 4, ECI only) ──
+  const top4 = [...rounds[rounds.length-1].candidates].sort((a,b) => b.total - a.total).slice(0, 4);
+  const trendRows = rounds.map(r => {
+    const rv   = r.candidates.reduce((s,c) => s + c.total, 0);
+    const isSel = r.round === rnd.round;
+    const cells = top4.map(tc => {
+      const c = r.candidates.find(x => x.candidate === tc.candidate);
+      const isFinal = r.round === rounds[rounds.length-1].round;
+      const _ogR = OG_DATA[String(r.round)] || {};
+      const ogV = (() => { 
+        const exact = _ogR[tc.candidate]; if(exact !== undefined) return parseInt(exact)||0;
+        const lc = tc.candidate.trim().toLowerCase();
+        for(const [k,v] of Object.entries(_ogR)) if(k.trim().toLowerCase()===lc) return parseInt(v)||0;
+        return 0;
+      })();
+      return `<td class="r">
+        <span style="color:${isFinal ? tc.color : 'var(--text2)'};font-weight:${isFinal ? 800 : 400}">${c ? c.total.toLocaleString() : '—'}</span>
+        ${ogV > 0 ? `<span class="badge badge-og">OG:${ogV >= 1000 ? (ogV/1000).toFixed(1)+'k' : ogV}</span>` : ''}
+      </td>`;
+    }).join('');
+    return `<tr style="background:${isSel ? 'rgba(255,107,0,.04)' : ''}">
+      <td style="color:${isSel ? 'var(--accent)' : 'var(--muted)'};font-weight:${isSel ? 800 : 600}">
+        R${r.round}${r.round === rounds.length ? ' ★' : ''}
+      </td>
+      ${cells}
+      <td class="r" style="color:var(--dim)">${rv.toLocaleString()} <span class="badge badge-eci">ECI</span></td>
+    </tr>`;
+  }).join('');
+  const trendTh = top4.map(c =>
+    `<th class="r" style="color:${c.color}">${c.partyShort}</th>`
+  ).join('');
+
+  document.getElementById('dashContent').innerHTML = `
+    <!-- STATUS -->
+    <div class="status-bar">
+      <div>
+        <div class="ac-name">${acName}</div>
+        <div class="ac-meta">EVM Rounds: <strong style="color:var(--accent)">${roundStatus}</strong> &nbsp;|&nbsp; Data rounds available: <strong>${rounds.length}</strong> &nbsp;|&nbsp; Viewing Round <strong style="color:var(--accent)">${rnd.round}</strong></div>
+      </div>
+      <div class="round-pill">ROUNDS: ${roundStatus}</div>
+    </div>
+
+    <!-- WINNER BANNER -->
+    ${leader ? `<div class="w-banner" style="background:${leader.color}10;border-color:${leader.color}40">
+      <div>
+        <div style="font-family:'Share Tech Mono',monospace;font-size:9px;color:var(--muted);letter-spacing:2px;font-weight:700;margin-bottom:5px">🏆 CURRENT LEADER — ROUND ${rnd.round}</div>
+        <div class="w-cand" style="color:${leader.color}">${leader.candidate}</div>
+        <div class="w-party">${leader.party}</div>
+      </div>
+      <div style="text-align:center">
+        <div class="w-votes" style="color:${leader.color}">${leader.total.toLocaleString()}</div>
+        <div class="w-votes-label">ECI OFFICIAL VOTES</div>
+      </div>
+      <div style="text-align:right">
+        <div style="font-family:'Share Tech Mono',monospace;font-size:9px;color:var(--muted);letter-spacing:2px;font-weight:700">LEAD OVER ${runner?.partyShort || ''}</div>
+        <div class="w-margin">+${margin.toLocaleString()}</div>
+        <div class="w-margin-label">VOTES MARGIN</div>
+      </div>
+    </div>` : ''}
+
+    <!-- OG BANNER (only if OG data present for this round) -->
+    ${hasOG ? `<div class="og-banner">
+      <div>
+        <div class="og-banner-title">📋 ON-GROUND DATA — ROUND ${rnd.round} (SEPARATE FROM ECI)</div>
+        <div class="og-banner-val">${ogLeader?.candidate || '—'} <span style="font-size:13px;color:var(--muted);font-weight:600">(${ogRound[ogLeader?.candidate]?.toLocaleString() || '—'} votes)</span></div>
+        <div class="og-banner-note">OG Total counted: ${ogTotal.toLocaleString()} · ECI Total: ${eciTotal.toLocaleString()} · These are independent datasets</div>
+      </div>
+      <div style="text-align:right">
+        <div style="font-family:'Share Tech Mono',monospace;font-size:9px;color:var(--dim);letter-spacing:1px;margin-bottom:4px">OG LEAD MARGIN</div>
+        <div style="font-size:22px;font-weight:800;color:var(--blue)">+${(
+          (ogRound[ogSorted[0]?.candidate]||0) - (ogRound[ogSorted[1]?.candidate]||0)
+        ).toLocaleString()}</div>
+      </div>
+    </div>` : ''}
+
+    <!-- STAT CARDS (ECI data only) -->
+    <div class="cards-grid">
+      <div class="stat-card" style="border-left-color:${leader?.color||'var(--accent)'}">
+        <div class="sc-label">ECI Total Votes (Round ${rnd.round})</div>
+        <div class="sc-val" style="color:${leader?.color||'var(--text)'}">${(eciTotal/1000).toFixed(1)}<span style="font-size:14px;color:var(--muted)">k</span></div>
+        <div class="sc-sub">${eciTotal.toLocaleString()} counted</div>
+      </div>
+      <div class="stat-card" style="border-left-color:var(--blue)">
+        <div class="sc-label">Leader Vote Share</div>
+        <div class="sc-val" style="color:${leader?.color||'var(--text)'}">${eciTotal ? ((leader?.total/eciTotal)*100).toFixed(1) : 0}<span style="font-size:14px;color:var(--muted)">%</span></div>
+        <div class="sc-sub">${leader?.partyShort || '—'}</div>
+      </div>
+      <div class="stat-card" style="border-left-color:var(--green)">
+        <div class="sc-label">Vote Margin</div>
+        <div class="sc-val" style="color:var(--green)">+${margin.toLocaleString()}</div>
+        <div class="sc-sub">over ${runner?.partyShort || '—'}</div>
+      </div>
+      ${hasOG ? `<div class="stat-card" style="border-left-color:var(--blue)">
+        <div class="sc-label">OG Total (Round ${rnd.round})</div>
+        <div class="sc-val" style="color:var(--blue)">${ogTotal.toLocaleString()}</div>
+        <div class="sc-sub">On-ground counted</div>
+      </div>` : `<div class="stat-card" style="border-left-color:var(--dim)">
+        <div class="sc-label">EVM Rounds</div>
+        <div class="sc-val">${roundStatus}</div>
+        <div class="sc-sub">status</div>
+      </div>`}
+    </div>
+
+    <!-- CANDIDATE TABLE -->
+    <div class="tbl-wrap">
+      <div class="sec-title">
+        <span>All Candidates — Round ${rnd.round} Cumulative</span>
+        <span><span class="badge badge-eci">ECI</span> = Official &nbsp; <span class="badge badge-og">OG</span> = On-Ground (separate)</span>
+      </div>
+      <div class="tbl-scroll"><table>
+        <thead><tr>
+          <th>#</th><th>Candidate</th><th>Party</th>
+          <th class="r">Prev Rounds</th><th class="r">+This Round</th>
+          <th class="r">ECI Total</th><th class="r">OG Total</th><th>Share</th>
+        </tr></thead>
+        <tbody>${rows}</tbody>
+      </table></div>
+    </div>
+
+    <!-- ROUND TREND TABLE -->
+    <div class="tbl-wrap">
+      <div class="sec-title">
+        <span>Round-by-Round ECI Trend — Top 4</span>
+        <span style="color:var(--dim)">OG badges shown where available</span>
+      </div>
+      <table>
+        <thead><tr><th>Round</th>${trendTh}<th class="r">ECI Total</th></tr></thead>
+        <tbody>${trendRows}</tbody>
+      </table>
+    </div>
+  `;
+}
+
+
+// ═══════════════════════════════════════════════════════════════════════════
+//  ML ENGINE — ALL MODELS
+// ═══════════════════════════════════════════════════════════════════════════
+
+// ── MATH UTILITIES ────────────────────────────────────────────────────────
+function mean(a){return a.reduce((s,v)=>s+v,0)/(a.length||1)}
+function stdDev(a){const m=mean(a);return Math.sqrt(a.reduce((s,v)=>s+(v-m)**2,0)/(a.length||1))}
+function linReg(xs,ys){
+  const n=xs.length;if(n<2)return{m:0,b:ys[0]||0,r2:0,rmse:0};
+  const sX=xs.reduce((a,b)=>a+b,0),sY=ys.reduce((a,b)=>a+b,0);
+  const sXY=xs.reduce((s,x,i)=>s+x*ys[i],0),sX2=xs.reduce((s,x)=>s+x*x,0);
+  const D=n*sX2-sX**2;if(!D)return{m:0,b:sY/n,r2:0,rmse:0};
+  const m=(n*sXY-sX*sY)/D,b=(sY-m*sX)/n,yM=sY/n;
+  const ssTot=ys.reduce((s,y)=>s+(y-yM)**2,0);
+  const ssRes=ys.reduce((s,y,i)=>s+(y-(m*xs[i]+b))**2,0);
+  const rmse=Math.sqrt(ssRes/n);
+  return{m,b,r2:Math.max(0,ssTot?1-ssRes/ssTot:0),rmse,pred:x=>m*x+b};
+}
+function polyReg2(xs,ys){
+  const n=xs.length;if(n<3){const l=linReg(xs,ys);return{...l,a:0,c:l.b,pred:x=>l.m*x+l.b};}
+  let s0=n,s1=0,s2=0,s3=0,s4=0,t0=0,t1=0,t2=0;
+  xs.forEach((x,i)=>{s1+=x;s2+=x**2;s3+=x**3;s4+=x**4;t0+=ys[i];t1+=x*ys[i];t2+=x**2*ys[i];});
+  const mat=[[s0,s1,s2,t0],[s1,s2,s3,t1],[s2,s3,s4,t2]];
+  for(let c=0;c<3;c++){
+    let mr=c;for(let r=c+1;r<3;r++)if(Math.abs(mat[r][c])>Math.abs(mat[mr][c]))mr=r;
+    [mat[c],mat[mr]]=[mat[mr],mat[c]];if(!mat[c][c])continue;
+    for(let r=0;r<3;r++)if(r!==c){const f=mat[r][c]/mat[c][c];for(let k=c;k<=3;k++)mat[r][k]-=f*mat[c][k];}
+  }
+  const cv=(mat[0][3]/mat[0][0])||0,bv=(mat[1][3]/mat[1][1])||0,av=(mat[2][3]/mat[2][2])||0;
+  const pred=x=>av*x**2+bv*x+cv;
+  const yM=mean(ys);
+  const ssTot=ys.reduce((s,y)=>s+(y-yM)**2,0);
+  const ssRes=ys.reduce((s,y,i)=>s+(y-pred(xs[i]))**2,0);
+  const rmse=Math.sqrt(ssRes/n);
+  return{a:av,b:bv,c:cv,r2:Math.max(0,ssTot?1-ssRes/ssTot:0),rmse,pred};
+}
+// Exponential Moving Average forecast
+function emaForecast(ys,alpha=0.3,futureSteps=0){
+  if(!ys.length)return{ema:0,pred:0};
+  let ema=ys[0];
+  for(let i=1;i<ys.length;i++) ema=alpha*ys[i]+(1-alpha)*ema;
+  const gains=ys.map((v,i)=>i===0?v:v-ys[i-1]);
+  const avgGain=mean(gains);
+  return{ema,pred:Math.round(ema+avgGain*futureSteps)};
+}
+// Box-Muller normal sample
+function randn(){
+  const u1=Math.random(),u2=Math.random();
+  return Math.sqrt(-2*Math.log(u1+1e-10))*Math.cos(2*Math.PI*u2);
+}
+// Monte Carlo simulation
+function monteCarlo(gains,currentTotal,stepsLeft,sims=4000){
+  const mu=mean(gains),sigma=stdDev(gains);
+  const results=[];
+  for(let i=0;i<sims;i++){
+    let v=currentTotal;
+    for(let s=0;s<stepsLeft;s++) v+=Math.max(0,mu+sigma*randn());
+    results.push(Math.round(v));
+  }
+  results.sort((a,b)=>a-b);
+  const p=p=>results[Math.min(sims-1,Math.floor(sims*p))];
+  return{results,mean:mean(results),p5:p(.05),p25:p(.25),p50:p(.50),p75:p(.75),p95:p(.95)};
+}
+// Bayesian win prob — updates each round using vote-share likelihood
+function bayesianHistory(rounds,candidates){
+  const n=candidates.length;
+  let probs=candidates.map(()=>1/n);
+  const history=[{round:0,probs:[...probs]}];
+  rounds.forEach(r=>{
+    const rv=candidates.map(c=>r.candidates.find(x=>x.candidate===c.candidate)?.total||0);
+    const tv=rv.reduce((s,v)=>s+v,0)||1;
+    const lik=rv.map(v=>(v/tv)+0.001);
+    let np=probs.map((p,i)=>p*lik[i]);
+    const sum=np.reduce((s,v)=>s+v,0)||1;
+    np=np.map(p=>p/sum);
+    probs=np;
+    history.push({round:r.round,probs:[...probs]});
+  });
+  return{history,final:probs};
+}
+// Z-score anomaly detection on per-round gains
+function detectAnomalies(rounds,candidate,threshold=2.0){
+  const ys=rounds.map(r=>r.candidates.find(c=>c.candidate===candidate)?.total||0);
+  const gains=ys.map((v,i)=>i===0?v:v-ys[i-1]);
+  const mu=mean(gains),sigma=stdDev(gains)||1;
+  return gains.map((g,i)=>({round:rounds[i].round,gain:g,z:(g-mu)/sigma,anomaly:Math.abs((g-mu)/sigma)>threshold}));
+}
+// Benford's Law — expected frequency of first digit 1-9
+function benford(rounds,candidate){
+  const ys=rounds.map(r=>r.candidates.find(c=>c.candidate===candidate)?.total||0);
+  const gains=ys.filter(v=>v>0);
+  const freq=Array(9).fill(0);
+  gains.forEach(v=>{const d=parseInt(String(Math.abs(v))[0]);if(d>0)freq[d-1]++;});
+  const total=freq.reduce((s,v)=>s+v,0)||1;
+  const observed=freq.map(f=>f/total);
+  const expected=Array.from({length:9},(_,i)=>Math.log10(1+1/(i+1)));
+  const chiSq=observed.reduce((s,o,i)=>s+(total*(o-expected[i])**2)/(expected[i]||1),0);
+  return{observed,expected,chiSq};
+}
+// Lead stability: % of rounds where leader was ahead
+function leadStability(rounds,leaderName){
+  const total=rounds.length;
+  const ahead=rounds.filter(r=>{
+    const s=[...r.candidates].sort((a,b)=>b.total-a.total);
+    return s[0]?.candidate===leaderName;
+  }).length;
+  return{pct:(ahead/total)*100,ahead,total};
+}
+
+// ── TAB HELPERS ────────────────────────────────────────────────────────────
+function mlTab(id){
+  document.querySelectorAll('.ml-pane').forEach(p=>p.classList.remove('active'));
+  document.querySelectorAll('.ml-tab').forEach(b=>b.classList.remove('active'));
+  const pane=document.getElementById('mlp-'+id);
+  const btn=document.getElementById('mlt-'+id);
+  if(pane) pane.classList.add('active');
+  if(btn)  btn.classList.add('active');
+}
+// Tooltip
+function tip(e,html){
+  const t=document.getElementById('ml-tip');
+  t.innerHTML=html; t.style.display='block';
+  t.style.left=(e.clientX+14)+'px'; t.style.top=(e.clientY-10)+'px';
+}
+function hideTip(){const t=document.getElementById('ml-tip');if(t)t.style.display='none';}
+
+// ── PAGE 2: ANALYTICS ─────────────────────────────────────────────────────────
+function renderAnalytics(){
+  const {roundStatus,rounds}=STATE;
+  if(!rounds.length){
+    document.getElementById('analyticsContent').innerHTML=
+      `<div class="msg"><span>Fetch ECI data first to see analytics.</span></div>`;
+    return;
+  }
+  const lastR  =rounds[rounds.length-1];
+  const sorted =[...lastR.candidates].sort((a,b)=>b.total-a.total);
+  const totalV =sorted.reduce((s,c)=>s+c.total,0);
+  const leader =sorted[0],runner=sorted[1];
+  const totalEVM=parseInt((roundStatus||'').split('/')[1])||rounds.length;
+  const stepsLeft=Math.max(0,totalEVM-rounds.length);
+  const xs=rounds.map(r=>r.round);
+
+  // ── RUN ALL ML MODELS ─────────────────────────────────────────────────────
+  const analysis=sorted.slice(0,6).map(cand=>{
+    const ys=rounds.map(r=>r.candidates.find(c=>c.candidate===cand.candidate)?.total||0);
+    const gains=ys.map((v,i)=>i===0?v:v-ys[i-1]);
+    const lr=linReg(xs,ys);
+    const pr=polyReg2(xs,ys);
+    const emaR=emaForecast(ys,0.35,stepsLeft);
+    const useP=pr.r2>lr.r2+0.02&&!isNaN(pr.a);
+    const regPred=Math.max(0,Math.round(useP?pr.pred(totalEVM):lr.pred(totalEVM)));
+    const emaPred=Math.max(0,emaR.pred);
+    const ensemblePred=Math.round((regPred*0.55+emaPred*0.45));
+    const ciHalf=Math.round(1.96*(useP?pr.rmse:lr.rmse)*Math.sqrt(stepsLeft+1));
+    const mc=stepsLeft>0?monteCarlo(gains,cand.total,stepsLeft,3500):null;
+    const anom=detectAnomalies(rounds,cand.candidate,2.0);
+    const bf=benford(rounds,cand.candidate);
+    const muGain=mean(gains),sdGain=stdDev(gains);
+    const recentGain=mean(gains.slice(-3));
+    const momentum=recentGain-muGain;
+    return{
+      ...cand,ys,gains,lr,pr,useP,regPred,emaPred,ensemblePred,
+      ciLo:Math.max(0,ensemblePred-ciHalf),ciHi:ensemblePred+ciHalf,
+      r2:useP?pr.r2:lr.r2,rmse:useP?pr.rmse:lr.rmse,
+      mc,anom,bf,muGain,sdGain,recentGain,momentum
+    };
+  });
+
+  // Monte Carlo win prob from simulated final leader count vs runner
+  const lcAn=analysis.find(c=>c.candidate===leader?.candidate);
+  const rcAn=analysis.find(c=>c.candidate===runner?.candidate);
+  let mcWinPct=null;
+  if(lcAn?.mc&&rcAn?.mc){
+    let wins=0;
+    const n=Math.min(lcAn.mc.results.length,rcAn.mc.results.length);
+    for(let i=0;i<n;i++) if(lcAn.mc.results[i]>rcAn.mc.results[i]) wins++;
+    mcWinPct=((wins/n)*100).toFixed(1);
+  }
+
+  // Bayesian history for top 4
+  const top4=analysis.slice(0,4);
+  const bayesData=bayesianHistory(rounds,top4);
+
+  // Lead stability
+  const stability=leadStability(rounds,leader?.candidate||'');
+
+  // Predicted final gap
+  const predLeadTotal=lcAn?.ensemblePred||leader?.total||0;
+  const predRunTotal =rcAn?.ensemblePred||runner?.total||0;
+  const predGap=predLeadTotal-predRunTotal;
+  const currentGap=leader?.total-(runner?.total||0);
+  const margin=leader?.total&&totalV?(leader.total/totalV*100).toFixed(1):0;
+
+  // ── VERDICT ────────────────────────────────────────────────────────────────
+  const gapPct=totalV?(currentGap/totalV*100):0;
+  const verdict=
+    mcWinPct&&parseFloat(mcWinPct)>85&&gapPct>8?{label:'SAFE WIN',emoji:'🏆',col:'#22D37A',bg:'rgba(34,211,122,.1)',glow:'rgba(34,211,122,.25)'}:
+    mcWinPct&&parseFloat(mcWinPct)>65?{label:'LIKELY WIN',emoji:'📈',col:'#FFD166',bg:'rgba(255,209,102,.08)',glow:'rgba(255,209,102,.2)'}:
+    {label:'CONTESTED',emoji:'⚔️',col:'#FF5A5A',bg:'rgba(255,90,90,.08)',glow:'rgba(255,90,90,.2)'};
+  const anomCount=analysis.reduce((s,c)=>s+c.anom.filter(a=>a.anomaly).length,0);
+  const confLabel=((lcAn?.r2||0)>0.95)?'Very High':((lcAn?.r2||0)>0.85)?'High':((lcAn?.r2||0)>0.70)?'Moderate':'Low';
+  const confColor=((lcAn?.r2||0)>0.85)?'var(--green)':((lcAn?.r2||0)>0.70)?'var(--yellow)':'var(--red)';
+
+  // ── CONCLUSION TEXT ────────────────────────────────────────────────────────
+  const conclusionText=`
+    <strong style="color:${leader?.color||'var(--accent)'}">${leader?.candidate||'—'}</strong> (${leader?.partyShort||'—'}) is 
+    ${verdict.label==='SAFE WIN'?'firmly in the lead with a commanding margin'
+    :verdict.label==='LIKELY WIN'?'ahead but the lead shows some volatility'
+    :'in a tightly contested race'}.
+    With <strong>${rounds.length}</strong> of <strong>${totalEVM}</strong> EVM rounds counted,
+    the ensemble ML model projects a final count of 
+    <strong style="color:${leader?.color}">${(lcAn?.ensemblePred||0).toLocaleString()}</strong> votes
+    with a predicted winning margin of <strong style="color:var(--green)">${Math.abs(predGap).toLocaleString()}</strong>.
+    ${mcWinPct?`Monte Carlo simulation (3,500 scenarios) gives the leader a <strong style="color:${verdict.col}">${mcWinPct}%</strong> win probability.`:'' }
+    ${stability.pct>80?`The leader has been ahead in <strong>${stability.pct.toFixed(0)}%</strong> of all rounds counted — showing consistent dominance.`:`The lead has been <strong>inconsistent</strong> — held in only ${stability.pct.toFixed(0)}% of rounds.`}
+    ${anomCount>0?`<strong style="color:var(--yellow)"> ${anomCount} statistically unusual round${anomCount>1?'s':''}</strong> detected across all candidates.`:'No anomalous rounds detected — counting appears uniform and consistent.'}
+    Prediction model: <strong>${lcAn?.useP?'Polynomial (degree-2)':'Linear'} regression</strong> + EMA ensemble.
+    Confidence: <strong style="color:${confColor}">${confLabel}</strong> (R²=${(lcAn?.r2||0).toFixed(3)}).
+  `.replace(/\n\s+/g,' ');
+
+  // ── SVG BUILDERS ──────────────────────────────────────────────────────────
+  // Sparkline for any series
+  function makeLine(seriesList,W=300,H=70){
+    const allV=seriesList.flatMap(s=>s.ys);
+    const maxV=Math.max(...allV,1);
+    const n=rounds.length;
+    return seriesList.map(s=>{
+      const pts=s.ys.map((v,j)=>`${(j/(n-1||1))*(W-12)+6},${H-6-(v/maxV)*(H-14)}`).join(' ');
+      return `<polyline points="${pts}" fill="none" stroke="${s.color}" stroke-width="2.5" stroke-linecap="round"/>
+        ${s.ys.map((v,j)=>`<circle class="sv-dot" cx="${(j/(n-1||1))*(W-12)+6}" cy="${H-6-(v/maxV)*(H-14)}" r="3.5" fill="${s.color}" style="cursor:pointer" onmousemove="tip(event,'${s.label} R${rounds[j]?.round}: ${v.toLocaleString()}')" onmouseleave="hideTip()"/>`).join('')}`;
+    }).join('');
+  }
+
+  // Ensemble forecast bar chart
+  function forecastBars(an,W=300,H=100){
+    const items=[
+      {label:'Linear',  val:Math.max(0,Math.round(an.lr.pred(totalEVM))), col:'var(--blue)'},
+      {label:'Poly-2',  val:Math.max(0,Math.round(an.useP?an.pr.pred(totalEVM):an.lr.pred(totalEVM))), col:'var(--yellow)'},
+      {label:'EMA',     val:an.emaPred, col:'var(--muted)'},
+      {label:'Ensemble',val:an.ensemblePred, col:an.color},
+    ];
+    const maxV=Math.max(...items.map(i=>i.val),1);
+    const bw=(W-60)/items.length-8;
+    return items.map((item,i)=>{
+      const bh=Math.round((item.val/maxV)*(H-24));
+      const x=10+i*(bw+8);
+      const y=H-20-bh;
+      return `<rect x="${x}" y="${y}" width="${bw}" height="${bh}" rx="4" fill="${item.col}" opacity=".85" style="cursor:pointer" onmousemove="tip(event,'${item.label}: ${item.val.toLocaleString()}')" onmouseleave="hideTip()"/>
+        <text x="${x+bw/2}" y="${y-4}" text-anchor="middle" font-family="Share Tech Mono" font-size="7" fill="${item.col}" font-weight="700">${(item.val/1000).toFixed(0)}k</text>
+        <text x="${x+bw/2}" y="${H-6}" text-anchor="middle" font-family="Share Tech Mono" font-size="7" fill="var(--muted)">${item.label}</text>`;
+    }).join('');
+  }
+
+  // Monte Carlo histogram
+  function mcHistogram(mc,currentV,col,W=320,H=90){
+    if(!mc)return`<div style="color:var(--dim);font-family:'Share Tech Mono',monospace;font-size:11px;padding:20px">No rounds left — counting complete.</div>`;
+    const bins=40;
+    const lo=mc.p5,hi=mc.p95,range=hi-lo||1;
+    const counts=Array(bins).fill(0);
+    mc.results.forEach(v=>{
+      const bi=Math.min(bins-1,Math.floor(((v-lo)/range)*bins));
+      if(bi>=0)counts[bi]++;
+    });
+    const maxC=Math.max(...counts,1);
+    const bw=W/bins;
+    const bars=counts.map((c,i)=>{
+      const bh=Math.round((c/maxC)*(H-18));
+      const bx=i*bw;
+      const bVal=Math.round(lo+(i/bins)*range);
+      const isMedian=Math.abs(bVal-mc.p50)<range/bins*2;
+      return `<rect x="${bx}" y="${H-16-bh}" width="${bw-1}" height="${bh}" rx="1" fill="${isMedian?col:'var(--blue)'}" opacity="${isMedian?1:.55}" style="cursor:pointer" onmousemove="tip(event,'~${(bVal/1000).toFixed(1)}k: ${c} simulations')" onmouseleave="hideTip()"/>`;
+    }).join('');
+    // marker lines for current, p25, p75, median
+    const xOf=v=>Math.round(((v-lo)/range)*W);
+    const markers=[
+      {v:currentV,lbl:'Now',col:'var(--accent)'},
+      {v:mc.p25,lbl:'P25',col:'var(--muted)'},
+      {v:mc.p50,lbl:'Med',col:col},
+      {v:mc.p75,lbl:'P75',col:'var(--muted)'},
+    ].filter(m=>m.v>=lo&&m.v<=hi);
+    const lines=markers.map(m=>`
+      <line x1="${xOf(m.v)}" y1="0" x2="${xOf(m.v)}" y2="${H-16}" stroke="${m.col}" stroke-width="1.5" stroke-dasharray="3,2"/>
+      <text x="${xOf(m.v)}" y="${H-4}" text-anchor="middle" font-family="Share Tech Mono" font-size="7" fill="${m.col}" font-weight="700">${m.lbl}</text>`).join('');
+    return `<svg viewBox="0 0 ${W} ${H}" style="width:100%;height:${H}px;display:block;overflow:visible">${bars}${lines}</svg>`;
+  }
+
+  // Bayesian probability chart
+  function bayesChart(history,candList,W=300,H=80){
+    const n=history.length;
+    if(n<2)return'';
+    return candList.map((c,ci)=>{
+      const pts=history.map((h,j)=>`${(j/(n-1))*(W-12)+6},${H-6-(h.probs[ci])*(H-14)}`).join(' ');
+      return `<polyline points="${pts}" fill="none" stroke="${c.color}" stroke-width="2.5" stroke-linecap="round"
+        onmousemove="tip(event,'${c.partyShort} prob after R${history[Math.round((event.clientX/W)*n)]?.round||'?'}')" onmouseleave="hideTip()"/>
+        ${history.map((h,j)=>`<circle cx="${(j/(n-1))*(W-12)+6}" cy="${H-6-(h.probs[ci])*(H-14)}" r="3" fill="${c.color}" style="cursor:pointer" onmousemove="tip(event,'${c.partyShort}: ${(h.probs[ci]*100).toFixed(1)}% after R${h.round}')" onmouseleave="hideTip()"/>`).join('')}`;
+    }).join('');
+  }
+
+  // Z-score chart
+  function zscoreChart(anom,col,W=300,H=70){
+    const n=anom.length;if(!n)return'';
+    const maxZ=Math.max(...anom.map(a=>Math.abs(a.z)),2.5);
+    const bw=(W-12)/n-2;
+    return anom.map((a,i)=>{
+      const bh=Math.min(H-24,Math.round((Math.abs(a.z)/maxZ)*(H-24)));
+      const x=6+i*(bw+2);
+      const y=a.z>=0?H-20-bh:H-20;
+      const fc=a.z>2?'var(--red)':a.z<-2?'var(--blue)':col;
+      return `<rect x="${x}" y="${y}" width="${bw}" height="${bh}" rx="2" fill="${fc}" opacity="${a.anomaly?1:.5}" style="cursor:pointer" onmousemove="tip(event,'R${a.round}: +${a.gain.toLocaleString()} votes | Z=${a.z.toFixed(2)}${a.anomaly?' ⚠ ANOMALY':''}')" onmouseleave="hideTip()"/>`;
+    }).join('')+
+    `<line x1="6" y1="${H-20}" x2="${W-6}" y2="${H-20}" stroke="var(--dim)" stroke-width="0.5"/>
+     <line x1="6" y1="${H-20-Math.round((2/maxZ)*(H-24))}" x2="${W-6}" y2="${H-20-Math.round((2/maxZ)*(H-24))}" stroke="var(--red)" stroke-width="0.5" stroke-dasharray="3,2"/>
+     <text x="${W-8}" y="${H-24-Math.round((2/maxZ)*(H-24))}" text-anchor="end" font-family="Share Tech Mono" font-size="7" fill="var(--red)">+2σ</text>`;
+  }
+
+  // ── BUILD HTML ─────────────────────────────────────────────────────────────
+  const lc=leader?.color||'var(--accent)';
+
+  // PANE 1: Ensemble Forecast
+  const p1=`
+    <div class="a-grid">
+      <div class="a-card full">
+        <div class="a-title">📐 Ensemble Forecast — Final Predicted Votes</div>
+        <div style="font-family:'Share Tech Mono',monospace;font-size:8px;color:var(--dim);margin-bottom:12px">
+          Combines Linear Regression (55%) + Exponential Moving Average (45%). Confidence interval: ±1.96 × RMSE × √remaining_rounds.
+        </div>
+        <div class="tbl-scroll"><table>
+          <thead><tr>
+            <th>Party</th><th class="r">Current</th><th class="r">Linear</th>
+            <th class="r">Poly-2</th><th class="r">EMA</th>
+            <th class="r">Ensemble</th><th class="r">95% CI Band</th><th class="r">R²</th>
+          </tr></thead>
+          <tbody>
+          ${analysis.map(c=>{
+            const linP=Math.max(0,Math.round(c.lr.pred(totalEVM)));
+            const polyP=Math.max(0,Math.round(c.useP?c.pr.pred(totalEVM):c.lr.pred(totalEVM)));
+            const r2c=c.r2>0.9?'var(--green)':c.r2>0.7?'var(--yellow)':'var(--red)';
+            return `<tr>
+              <td><span class="pdot" style="background:${c.color};box-shadow:0 0 8px ${c.color}99"></span><strong style="color:${c.color}">${c.partyShort}</strong></td>
+              <td class="r" style="font-family:'Share Tech Mono',monospace;font-weight:700">${c.total.toLocaleString()}</td>
+              <td class="r" style="font-family:'Share Tech Mono',monospace;color:var(--blue)">${linP.toLocaleString()}</td>
+              <td class="r" style="font-family:'Share Tech Mono',monospace;color:var(--yellow)">${polyP.toLocaleString()}</td>
+              <td class="r" style="font-family:'Share Tech Mono',monospace;color:var(--muted)">${c.emaPred.toLocaleString()}</td>
+              <td class="r" style="font-family:'Share Tech Mono',monospace;font-weight:800;color:${c.color}">${c.ensemblePred.toLocaleString()}</td>
+              <td class="r" style="font-family:'Share Tech Mono',monospace;font-size:10px;color:var(--dim)">${c.ciLo.toLocaleString()} – ${c.ciHi.toLocaleString()}</td>
+              <td class="r" style="font-family:'Share Tech Mono',monospace;font-weight:700;color:${r2c}">${c.r2.toFixed(3)}</td>
+            </tr>`;
+          }).join('')}
+          </tbody>
+        </table></div>
+      </div>
+      ${analysis.slice(0,4).map(c=>`
+        <div class="a-card">
+          <div class="a-title" style="color:${c.color}">${c.partyShort} — Model Comparison</div>
+          <svg viewBox="0 0 300 110" style="width:100%;height:110px;display:block;overflow:visible">
+            ${forecastBars(c,300,100)}
+            <rect x="${10+3*(Math.round((300-60)/4)-8+8)}" y="2" width="${Math.round((300-60)/4)-8}" height="96" rx="4" fill="${c.color}" opacity=".08"/>
+          </svg>
+          <div style="font-family:'Share Tech Mono',monospace;font-size:8px;color:var(--dim);margin-top:4px">Trend: ${c.useP?'Polynomial (curved)':'Linear'} | RMSE: ${c.rmse.toFixed(0)}</div>
+        </div>`).join('')}
+    </div>`;
+
+  // PANE 2: Monte Carlo
+  const p2=`
+    <div class="a-grid">
+      <div class="a-card full">
+        <div class="a-title">🎲 Monte Carlo Simulation — 3,500 Scenarios</div>
+        <div style="font-family:'Share Tech Mono',monospace;font-size:8px;color:var(--dim);margin-bottom:12px">
+          Samples per-round vote gains from a normal distribution (μ=mean gain, σ=std dev). Runs ${stepsLeft} remaining rounds ${stepsLeft===0?'(counting complete — no remaining rounds)':'each simulation'}. Shows probability distribution of final outcomes.
+        </div>
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:10px;margin-bottom:16px">
+          ${[
+            {label:'Win Probability',val:mcWinPct?mcWinPct+'%':'N/A',col:verdict.col},
+            {label:'Expected Final',val:lcAn?.mc?(lcAn.mc.mean/1000).toFixed(1)+'k':'—',col:lc},
+            {label:'Best Case (P95)',val:lcAn?.mc?(lcAn.mc.p95/1000).toFixed(1)+'k':'—',col:'var(--green)'},
+            {label:'Worst Case (P5)',val:lcAn?.mc?(lcAn.mc.p5/1000).toFixed(1)+'k':'—',col:'var(--red)'},
+          ].map(s=>`<div class="stat-card" style="border-left-color:${s.col}">
+            <div class="sc-label">${s.label}</div>
+            <div class="sc-val" style="color:${s.col};font-size:22px">${s.val}</div>
+          </div>`).join('')}
+        </div>
+      </div>
+      ${analysis.slice(0,4).map(c=>`
+        <div class="a-card">
+          <div class="a-title" style="color:${c.color}">${c.partyShort} — Outcome Distribution</div>
+          ${mcHistogram(c.mc,c.total,c.color,300,90)}
+          ${c.mc?`<div style="display:flex;flex-wrap:wrap;gap:10px;margin-top:8px">
+            ${[{l:'P5',v:c.mc.p5},{l:'Median',v:c.mc.p50},{l:'P95',v:c.mc.p95}].map(p=>
+              `<span style="font-family:'Share Tech Mono',monospace;font-size:9px;color:var(--muted)">${p.l}: <strong style="color:${c.color}">${p.v.toLocaleString()}</strong></span>`
+            ).join('')}
+          </div>`:''}
+        </div>`).join('')}
+    </div>`;
+
+  // PANE 3: Bayesian
+  const bayesHist=bayesData.history;
+  const p3=`
+    <div class="a-grid">
+      <div class="a-card full">
+        <div class="a-title">📊 Bayesian Win Probability — Updated Each Round</div>
+        <div style="font-family:'Share Tech Mono',monospace;font-size:8px;color:var(--dim);margin-bottom:12px">
+          Starts with equal prior (${(100/top4.length).toFixed(0)}% each). Each round, the prior is multiplied by the likelihood (vote share that round) and renormalised — implementing Bayes' theorem P(win|data) ∝ P(data|win)×P(win).
+        </div>
+        <svg viewBox="0 0 600 120" style="width:100%;height:120px;display:block;overflow:visible">
+          ${bayesChart(bayesHist,top4,600,110)}
+          ${[0,25,50,75,100].map(v=>`
+            <line x1="0" y1="${110-6-(v/100)*(110-14)}" x2="596" y2="${110-6-(v/100)*(110-14)}" stroke="var(--border)" stroke-width="0.4"/>
+            <text x="2" y="${110-4-(v/100)*(110-14)}" font-family="Share Tech Mono" font-size="7" fill="var(--dim)">${v}%</text>`).join('')}
+          ${bayesHist.map((_,j)=>j%Math.ceil(bayesHist.length/8)===0?`<text x="${(j/(bayesHist.length-1||1))*580+6}" y="118" text-anchor="middle" font-family="Share Tech Mono" font-size="7" fill="var(--dim)">${j===0?'Start':'R'+bayesHist[j]?.round}</text>`:''  ).join('')}
+        </svg>
+        <div class="bayes-legend">
+          ${top4.map(c=>`<div class="bayes-leg-item"><span class="pdot" style="background:${c.color};box-shadow:0 0 6px ${c.color}"></span><span style="color:${c.color}">${c.partyShort}</span><span style="color:var(--muted);margin-left:3px">${(bayesData.final[top4.indexOf(c)]*100).toFixed(1)}%</span></div>`).join('')}
+        </div>
+      </div>
+      <div class="a-card">
+        <div class="a-title">🔄 Probability Shifts</div>
+        <div style="font-family:'Share Tech Mono',monospace;font-size:8px;color:var(--dim);margin-bottom:10px">How much each round shifted win probability</div>
+        ${top4.map(ci=>{
+          const shifts=bayesHist.slice(1).map((h,j)=>({round:h.round,shift:(h.probs[top4.indexOf(ci)]-(bayesHist[j].probs[top4.indexOf(ci)]))*100}));
+          const biggest=shifts.reduce((a,b)=>Math.abs(b.shift)>Math.abs(a.shift)?b:a,shifts[0]||{});
+          return `<div style="margin-bottom:10px">
+            <div style="display:flex;justify-content:space-between;margin-bottom:3px">
+              <span style="font-family:'Share Tech Mono',monospace;font-size:10px;font-weight:700;color:${ci.color}">${ci.partyShort}</span>
+              <span style="font-family:'Share Tech Mono',monospace;font-size:10px;color:var(--muted)">Final: <strong style="color:${ci.color}">${(bayesData.final[top4.indexOf(ci)]*100).toFixed(1)}%</strong></span>
+            </div>
+            <div style="font-family:'Share Tech Mono',monospace;font-size:9px;color:var(--dim)">Biggest shift: R${biggest?.round||'—'} (${biggest?.shift>=0?'+':''}${biggest?.shift?.toFixed(1)||0}%)</div>
+          </div>`;
+        }).join('')}
+      </div>
+      <div class="a-card">
+        <div class="a-title">📐 Lead Stability Score</div>
+        <div style="font-family:'Share Tech Mono',monospace;font-size:8px;color:var(--dim);margin-bottom:14px">% of rounds where ${leader?.partyShort} held the lead</div>
+        <div style="font-size:38px;font-weight:800;font-family:'Share Tech Mono',monospace;color:${stability.pct>75?'var(--green)':stability.pct>50?'var(--yellow)':'var(--red)'};line-height:1;margin-bottom:8px">${stability.pct.toFixed(0)}%</div>
+        <div style="height:8px;background:var(--surface2);border-radius:4px;overflow:hidden;margin-bottom:8px">
+          <div style="width:${stability.pct}%;height:100%;background:${stability.pct>75?'var(--green)':stability.pct>50?'var(--yellow)':'var(--red)'};border-radius:4px;transition:width .7s ease"></div>
+        </div>
+        <div style="font-family:'Share Tech Mono',monospace;font-size:10px;color:var(--muted)">Ahead in ${stability.ahead} of ${stability.total} rounds counted</div>
+        <div style="margin-top:12px;font-family:'Share Tech Mono',monospace;font-size:10px;color:var(--text2);line-height:1.6">
+          ${stability.pct>80?'✅ <strong>Dominant lead</strong> — has held the top position in almost every round.'
+          :stability.pct>60?'📊 <strong>Generally stable</strong> — lead occasionally swapped but mostly consistent.'
+          :'⚠️ <strong>Unstable lead</strong> — position has changed frequently across rounds.'}
+        </div>
+      </div>
+    </div>`;
+
+  // PANE 4: Anomaly Detection
+  const p4=`
+    <div class="a-grid">
+      <div class="a-card full">
+        <div class="a-title">🚨 Anomaly Detection — Z-Score Analysis (σ threshold: 2.0)</div>
+        <div style="font-family:'Share Tech Mono',monospace;font-size:8px;color:var(--dim);margin-bottom:12px">
+          Flags rounds where a candidate's vote gain deviates more than 2 standard deviations from their mean gain per round. Z = (gain − μ) / σ. High Z = unexpectedly large gain. Low Z = unusually small.
+        </div>
+        ${analysis.slice(0,4).map(c=>{
+          const flagged=c.anom.filter(a=>a.anomaly);
+          return `<div style="margin-bottom:18px">
+            <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px;flex-wrap:wrap">
+              <span class="pdot" style="background:${c.color};box-shadow:0 0 8px ${c.color}99"></span>
+              <strong style="color:${c.color};font-family:'Share Tech Mono',monospace;font-size:12px">${c.partyShort}</strong>
+              <span style="font-family:'Share Tech Mono',monospace;font-size:9px;color:var(--dim)">μ=${c.muGain.toFixed(0)} votes/round  σ=${c.sdGain.toFixed(0)}  Anomalies: <strong style="color:${flagged.length?'var(--yellow)':'var(--green)'}">${flagged.length}</strong></span>
+            </div>
+            <svg viewBox="0 0 600 75" style="width:100%;height:75px;display:block;overflow:visible">
+              ${(()=>{const an=c.anom,W=600,H=70,n=an.length;const maxZ=Math.max(...an.map(a=>Math.abs(a.z)),2.5);const bw=(W-12)/n-2;return an.map((a,i)=>{const bh=Math.min(H-24,Math.round((Math.abs(a.z)/maxZ)*(H-24)));const x=6+i*(bw+2);const y=a.z>=0?H-18-bh:H-18;const fc=a.z>2?'var(--red)':a.z<-2?'var(--blue)':c.color;return `<rect x="${x}" y="${y}" width="${bw}" height="${bh}" rx="2" fill="${fc}" opacity="${a.anomaly?1:.45}" style="cursor:pointer" onmousemove="tip(event,'R${a.round}: +${a.gain.toLocaleString()} | Z=${a.z.toFixed(2)}${a.anomaly?' ⚠':''}')" onmouseleave="hideTip()"/>`;}).join('')+`<line x1="6" y1="${H-18}" x2="${W-6}" y2="${H-18}" stroke="var(--border2)" stroke-width="0.5"/><line x1="6" y1="${H-18-Math.round((2/maxZ)*(H-24))}" x2="${W-6}" y2="${H-18-Math.round((2/maxZ)*(H-24))}" stroke="rgba(255,90,90,.4)" stroke-width="0.8" stroke-dasharray="4,2"/>`;})()}
+            </svg>
+            ${flagged.length?`<div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:6px">
+              ${flagged.map(a=>`<span class="z-badge ${a.z>2?'z-hi':'z-lo'}">R${a.round}: ${a.z>0?'+':''}${a.z.toFixed(1)}σ</span>`).join('')}
+            </div>`:''}
+          </div>`;
+        }).join('')}
+      </div>
+      <div class="a-card">
+        <div class="a-title">📏 Benford's Law — First Digit Distribution</div>
+        <div style="font-family:'Share Tech Mono',monospace;font-size:8px;color:var(--dim);margin-bottom:10px">
+          Natural vote counts should follow Benford's Law. Large deviation (χ²&gt;20) may indicate anomaly.
+        </div>
+        ${analysis.slice(0,3).map(c=>{
+          const bf=c.bf;
+          const suspicious=bf.chiSq>15;
+          return `<div style="margin-bottom:14px">
+            <div style="display:flex;justify-content:space-between;margin-bottom:6px">
+              <span style="font-family:'Share Tech Mono',monospace;font-size:10px;font-weight:700;color:${c.color}">${c.partyShort}</span>
+              <span class="z-badge ${suspicious?'z-hi':'z-ok'}">χ²=${bf.chiSq.toFixed(1)} ${suspicious?'⚠ Unusual':'✓ Normal'}</span>
+            </div>
+            <svg viewBox="0 0 200 40" style="width:100%;height:40px;display:block">
+              ${bf.expected.map((e,i)=>{const bh=Math.round(e*120);const bhe=Math.round(bf.observed[i]*120);return `<rect x="${10+i*20}" y="${36-bh}" width="8" height="${bh}" fill="${c.color}" opacity=".3"/><rect x="${18+i*20}" y="${36-bhe}" width="6" height="${bhe}" fill="${c.color}" opacity=".85"/>`;}).join('')}
+              <text x="100" y="39" text-anchor="middle" font-family="Share Tech Mono" font-size="6" fill="var(--dim)">Digits 1–9 | Dark=Observed  Light=Expected</text>
+            </svg>
+          </div>`;
+        }).join('')}
+      </div>
+      <div class="a-card">
+        <div class="a-title">📊 Volatility Index</div>
+        <div style="font-family:'Share Tech Mono',monospace;font-size:8px;color:var(--dim);margin-bottom:10px">Coefficient of variation (CV=σ/μ) of per-round gains. Lower = more consistent/predictable.</div>
+        ${analysis.slice(0,5).map(c=>{
+          const cv=c.muGain?((c.sdGain/Math.abs(c.muGain))*100):0;
+          const stability=cv<30?'Very Consistent':cv<60?'Moderate':cv<100?'Variable':'Highly Volatile';
+          const sc=cv<30?'var(--green)':cv<60?'var(--yellow)':'var(--red)';
+          return `<div class="pb-row" style="margin-bottom:10px">
+            <span class="pb-label" style="color:${c.color};font-weight:700">${c.partyShort}</span>
+            <div class="pb-track"><div class="pb-fill" style="width:${Math.min(100,cv)}%;background:${sc}"></div></div>
+            <span class="pb-pct" style="color:${sc}">${cv.toFixed(0)}%</span>
+            <span style="font-family:'Share Tech Mono',monospace;font-size:8px;color:var(--dim);margin-left:4px;white-space:nowrap">${stability}</span>
+          </div>`;
+        }).join('')}
+      </div>
+    </div>`;
+
+  // PANE 5: Dominance + Trends
+  const top3=analysis.slice(0,3);
+  const allV=top3.flatMap(c=>c.ys);
+  const maxSp=Math.max(...allV,1);
+  const W2=600,H2=90;
+  const spkSVG=`<svg viewBox="0 0 ${W2} ${H2}" style="width:100%;height:${H2}px;display:block;overflow:visible">
+    ${top3.map(c=>{
+      const pts=c.ys.map((v,j)=>`${(j/(rounds.length-1||1))*(W2-12)+6},${H2-8-(v/maxSp)*(H2-18)}`).join(' ');
+      return `<polyline points="${pts}" fill="none" stroke="${c.color}" stroke-width="2.5" stroke-linecap="round"/>
+        ${c.ys.map((v,j)=>`<circle cx="${(j/(rounds.length-1||1))*(W2-12)+6}" cy="${H2-8-(v/maxSp)*(H2-18)}" r="4" fill="${c.color}" style="cursor:pointer" onmousemove="tip(event,'${c.partyShort} R${rounds[j]?.round}: ${v.toLocaleString()}')" onmouseleave="hideTip()"/>`).join('')}`;
+    }).join('')}
+    ${rounds.map((r,i)=>i%Math.ceil(rounds.length/6)===0?`<text x="${(i/(rounds.length-1||1))*(W2-12)+6}" y="${H2}" text-anchor="middle" font-family="Share Tech Mono" font-size="7" fill="var(--dim)">R${r.round}</text>`:'').join('')}
+  </svg>`;
+
+  const domSegs=sorted.slice(0,6).map(c=>{const pct=totalV?((c.total/totalV)*100).toFixed(1):0;return `<div class="dom-seg" style="width:${pct}%;background:${c.color}" title="${c.partyShort}: ${pct}%">${pct>7?c.partyShort:''}</div>`;}).join('');
+
+  // EMA smoothed gain chart
+  const emaChartSVG=`<svg viewBox="0 0 600 80" style="width:100%;height:80px;display:block;overflow:visible">
+    ${top3.map(c=>{
+      const gains=c.gains;let ema=gains[0]||0;
+      const emaVals=[ema];
+      gains.slice(1).forEach(g=>{ema=0.35*g+0.65*ema;emaVals.push(ema);});
+      const maxG=Math.max(...emaVals.map(Math.abs),1);
+      const pts=emaVals.map((v,j)=>`${(j/(gains.length-1||1))*590+5},${70-(v/maxG)*60}`).join(' ');
+      return `<polyline points="${pts}" fill="none" stroke="${c.color}" stroke-width="2" stroke-linecap="round" stroke-dasharray="${c===top3[0]?'none':'4,2'}"/>`;
+    }).join('')}
+    ${rounds.map((r,i)=>i%Math.ceil(rounds.length/6)===0?`<text x="${(i/(rounds.length-1||1))*590+5}" y="78" text-anchor="middle" font-family="Share Tech Mono" font-size="7" fill="var(--dim)">R${r.round}</text>`:'').join('')}
+    <line x1="5" y1="70" x2="595" y2="70" stroke="var(--border)" stroke-width="0.5"/>
+  </svg>`;
+
+  const p5=`
+    <div class="a-grid">
+      <div class="a-card full">
+        <div class="a-title">📈 Cumulative Vote Progression — Top 3</div>
+        ${spkSVG}
+        <div style="display:flex;gap:14px;margin-top:6px;flex-wrap:wrap">
+          ${top3.map(c=>`<span style="font-family:'Share Tech Mono',monospace;font-size:9px;font-weight:700;color:${c.color}">▬ ${c.partyShort}</span>`).join('')}
+        </div>
+      </div>
+      <div class="a-card full">
+        <div class="a-title">⚡ EMA-Smoothed Per-Round Gains (α=0.35) — Top 3</div>
+        <div style="font-family:'Share Tech Mono',monospace;font-size:8px;color:var(--dim);margin-bottom:8px">Exponential smoothing emphasises recent rounds. Solid=${top3[0]?.partyShort} · Dashed=others</div>
+        ${emaChartSVG}
+      </div>
+      <div class="a-card">
+        <div class="a-title">⚖️ Vote Share Dominance</div>
+        <div class="dom-bar">${domSegs}</div>
+        <div style="display:flex;flex-wrap:wrap;gap:8px;margin-top:10px">
+          ${sorted.slice(0,5).map(c=>{const p=totalV?((c.total/totalV)*100).toFixed(1):0;return `<div style="display:flex;align-items:center;gap:5px;font-family:'Share Tech Mono',monospace;font-size:9px"><span class="pdot" style="background:${c.color};box-shadow:0 0 6px ${c.color}"></span><span style="color:var(--muted)">${c.partyShort}</span><strong style="color:${c.color}">${p}%</strong></div>`;}).join('')}
+        </div>
+      </div>
+      <div class="a-card">
+        <div class="a-title">🗺️ Region Map</div>
+        ${buildStateMap(sorted)}
+      </div>
+    </div>`;
+
+  // OG pane
+  const ogR=OG_DATA[String(lastR.round)]||{};
+  const hasOG=Object.values(ogR).some(v=>parseInt(v)>0);
+  const p6=hasOG?`
+    <div class="a-card full">
+      <div class="a-title">📋 OG vs ECI Comparison — Round ${lastR.round}</div>
+      <div class="tbl-scroll"><table>
+        <thead><tr><th>Party</th><th>Candidate</th><th class="r"><span class="badge badge-eci">ECI</span></th><th class="r"><span class="badge badge-og">OG</span></th><th class="r">Diff</th><th class="r">Gap %</th></tr></thead>
+        <tbody>${sorted.slice(0,6).map(c=>{const eciV=c.total,ogV=getOG(lastR.round,c.candidate);const diff=ogV>0?ogV-eciV:null;const gapPct=ogV>0&&eciV?((Math.abs(diff)/eciV)*100).toFixed(1)+'%':'—';const dc=diff===null?'var(--dim)':diff>0?'var(--green)':'var(--red)';return `<tr><td><span class="pdot" style="background:${c.color};box-shadow:0 0 7px ${c.color}"></span><strong style="color:${c.color}">${c.partyShort}</strong></td><td style="font-weight:600;color:var(--text2)">${c.candidate}</td><td class="r" style="font-family:'Share Tech Mono',monospace;font-weight:700;color:var(--green)">${eciV.toLocaleString()}</td><td class="r" style="font-family:'Share Tech Mono',monospace;font-weight:700;color:var(--blue)">${ogV>0?ogV.toLocaleString():'—'}</td><td class="r" style="font-family:'Share Tech Mono',monospace;font-weight:700;color:${dc}">${diff!==null?(diff>=0?'+':'')+diff.toLocaleString():'—'}</td><td class="r" style="font-family:'Share Tech Mono',monospace;color:var(--muted)">${gapPct}</td></tr>`;}).join('')}</tbody>
+      </table></div>
+    </div>`:`<div style="padding:40px;text-align:center;font-family:'Share Tech Mono',monospace;font-size:11px;color:var(--dim)">No OG data entered yet. Use the OG Entry panel on the Dashboard page.</div>`;
+
+  // ── FINAL RENDER ──────────────────────────────────────────────────────────
+  document.getElementById('analyticsContent').innerHTML = `
+
+    <!-- VERDICT CONCLUSION CARD -->
+    <div class="verdict-wrap" style="--v-glow:${verdict.glow};background:${verdict.bg};border-color:${verdict.col}44">
+      <div class="verdict-badge" style="background:${verdict.col}22;border:1px solid ${verdict.col}55;color:${verdict.col}">${verdict.emoji} ${verdict.label}</div>
+      <div class="verdict-headline" style="color:${lc}">${leader?.candidate||'—'} <span style="color:var(--muted);font-size:16px;font-weight:600">(${leader?.partyShort})</span></div>
+      <div class="verdict-body">${conclusionText}</div>
+      <div class="verdict-stats">
+        ${[
+          {label:'Predicted Final',val:(lcAn?.ensemblePred||0).toLocaleString(),col:lc},
+          {label:'Predicted Margin',val:'~'+Math.abs(predGap).toLocaleString(),col:'var(--green)'},
+          {label:'MC Win Probability',val:mcWinPct?mcWinPct+'%':'N/A',col:verdict.col},
+          {label:'Model Confidence',val:confLabel,col:confColor},
+          {label:'Lead Stability',val:stability.pct.toFixed(0)+'%',col:stability.pct>75?'var(--green)':'var(--yellow)'},
+          {label:'Anomalies Found',val:String(anomCount),col:anomCount>0?'var(--yellow)':'var(--green)'},
+        ].map(s=>`<div class="vstat"><div class="vstat-label">${s.label}</div><div class="vstat-val" style="color:${s.col}">${s.val}</div></div>`).join('')}
+      </div>
+    </div>
+
+    <!-- MODEL TABS -->
+    <div class="ml-tabs">
+      <button id="mlt-forecast" class="ml-tab active" onclick="mlTab('forecast')">🔮 Ensemble Forecast</button>
+      <button id="mlt-monte"    class="ml-tab"        onclick="mlTab('monte')">🎲 Monte Carlo</button>
+      <button id="mlt-bayes"    class="ml-tab"        onclick="mlTab('bayes')">📊 Bayesian</button>
+      <button id="mlt-anomaly"  class="ml-tab"        onclick="mlTab('anomaly')">🚨 Anomaly</button>
+      <button id="mlt-trends"   class="ml-tab"        onclick="mlTab('trends')">📈 Trends</button>
+      <button id="mlt-og"       class="ml-tab"        onclick="mlTab('og')" style="${hasOG?'':'opacity:.5'}">📋 OG ${hasOG?'✓':''}</button>
+    </div>
+
+    <div id="mlp-forecast" class="ml-pane active">${p1}</div>
+    <div id="mlp-monte"    class="ml-pane">${p2}</div>
+    <div id="mlp-bayes"    class="ml-pane">${p3}</div>
+    <div id="mlp-anomaly"  class="ml-pane">${p4}</div>
+    <div id="mlp-trends"   class="ml-pane">${p5}</div>
+    <div id="mlp-og"       class="ml-pane">${p6}</div>
+  `;
+}
+
+
+// ── STATE MAP BUILDER ─────────────────────────────────────────────────────────
+function buildStateMap(sorted) {
+  const lc = sorted[0]?.color || '#FF6B00';
+  const rc = sorted[1]?.color || '#374151';
+  const url = document.getElementById('eciUrl')?.value || '';
+  const isTN = url.includes('S228');
+  const acName = STATE.acName;
+  const svgMap = isTN ? `
+    <svg viewBox="0 0 220 320" style="width:100%;max-height:280px" xmlns="http://www.w3.org/2000/svg">
+      <defs>
+        <radialGradient id="mgrad" cx="50%" cy="40%" r="60%">
+          <stop offset="0%" stop-color="${lc}" stop-opacity=".3"/>
+          <stop offset="100%" stop-color="${lc}" stop-opacity=".04"/>
+        </radialGradient>
+      </defs>
+      <path d="M75,10 L140,18 L168,55 L180,100 L172,148 L160,190 L145,235 L128,275 L110,300 L90,308 L74,296 L64,262 L56,220 L50,178 L46,135 L55,88 L64,44 Z"
+        fill="url(#mgrad)" stroke="${lc}" stroke-width="1.5"/>
+      <ellipse cx="110" cy="68" rx="40" ry="25" fill="${lc}18" stroke="${lc}55" stroke-width="1"/>
+      <ellipse cx="128" cy="118" rx="34" ry="22" fill="${rc}18" stroke="${rc}55" stroke-width="1"/>
+      <ellipse cx="100" cy="160" rx="32" ry="20" fill="${lc}18" stroke="${lc}55" stroke-width="1"/>
+      <ellipse cx="118" cy="210" rx="28" ry="18" fill="${lc}18" stroke="${lc}55" stroke-width="1"/>
+      <ellipse cx="105" cy="260" rx="24" ry="16" fill="${rc}18" stroke="${rc}55" stroke-width="1"/>
+      <circle cx="100" cy="160" r="16" fill="${lc}" fill-opacity=".9" stroke="#fff" stroke-width="2.5"/>
+      <text x="100" y="165" text-anchor="middle" font-family="Share Tech Mono" font-size="7" fill="#fff" font-weight="700">HERE</text>
+      <text x="110" y="82" text-anchor="middle" font-family="Share Tech Mono" font-size="7" fill="${lc}" font-weight="700">Chennai</text>
+      <text x="126" y="132" text-anchor="middle" font-family="Share Tech Mono" font-size="7" fill="${rc}" font-weight="700">Vellore</text>
+      <text x="116" y="224" text-anchor="middle" font-family="Share Tech Mono" font-size="7" fill="${lc}" font-weight="700">Trichy</text>
+      <text x="104" y="274" text-anchor="middle" font-family="Share Tech Mono" font-size="7" fill="${rc}" font-weight="700">Madurai</text>
+      <text x="110" y="316" text-anchor="middle" font-family="Share Tech Mono" font-size="11" font-weight="800" fill="${lc}">TAMIL NADU</text>
+    </svg>` : `
+    <svg viewBox="0 0 220 180" style="width:100%" xmlns="http://www.w3.org/2000/svg">
+      <rect x="20" y="14" width="180" height="130" rx="16" fill="${lc}10" stroke="${lc}44" stroke-width="1.5"/>
+      <circle cx="110" cy="80" r="36" fill="${lc}55" stroke="${lc}" stroke-width="2"/>
+      <text x="110" y="85" text-anchor="middle" font-family="Share Tech Mono" font-size="11" fill="#fff" font-weight="800">${sorted[0]?.partyShort||''}</text>
+      <text x="110" y="162" text-anchor="middle" font-family="Share Tech Mono" font-size="12" font-weight="800" fill="${lc}">CONSTITUENCY</text>
+    </svg>`;
+  const legendItems = sorted.slice(0,5).map(c=>`
+    <div style="display:flex;align-items:center;gap:9px;margin-bottom:10px">
+      <div style="width:14px;height:14px;border-radius:4px;background:${c.color};box-shadow:0 0 10px ${c.color}99;flex-shrink:0"></div>
+      <div>
+        <div style="font-family:'Share Tech Mono',monospace;font-size:8px;color:var(--muted);letter-spacing:1px">${c.party.slice(0,30)}</div>
+        <div style="font-size:13px;font-weight:800;color:${c.color}">${c.partyShort} — ${c.total.toLocaleString()}</div>
+      </div>
+    </div>`).join('');
+  return `<div class="map-container" style="display:grid;grid-template-columns:240px 1fr;gap:0">
+    <div style="padding:14px;border-right:1px solid var(--border)">
+      <div style="font-family:'Share Tech Mono',monospace;font-size:9px;color:var(--muted);letter-spacing:2px;margin-bottom:12px;font-weight:700">${acName}</div>
+      ${legendItems}
+      <div style="margin-top:8px;font-family:'Share Tech Mono',monospace;font-size:8px;color:var(--dim)">● = Selected constituency<br>Shaded = party zone</div>
+    </div>
+    <div style="padding:14px;display:flex;align-items:center;justify-content:center">${svgMap}</div>
+  </div>`;
+}
+
+// ── WEBSOCKET ─────────────────────────────────────────────────────────────────
+function connectDashWS() {
+  const proto = location.protocol === 'https:' ? 'wss' : 'ws';
+  dashWS = new WebSocket(proto + '://' + location.host);
+  dashWS.onopen  = () => document.getElementById('liveLabel').textContent = 'LIVE';
+  dashWS.onclose = () => setTimeout(connectDashWS, 3000);
+  dashWS.onmessage = (e) => {
+    const msg = JSON.parse(e.data);
+    if (msg.type === 'full_state' && STATE.ogKey && msg.ogStore?.[STATE.ogKey]) {
+      OG_DATA = {};
+      Object.entries(msg.ogStore[STATE.ogKey]).forEach(([r,cands]) => {
+        OG_DATA[String(r)] = {};
+        Object.entries(cands).forEach(([name, v]) => { OG_DATA[String(r)][String(name).trim()] = parseInt(v) || 0; });
+      });
+      if (currentPage === 'p1') renderDashboard();
+      else renderAnalytics();
+    }
+    if (msg.type === 'og_update' && STATE.ogKey && msg.key === STATE.ogKey) {
+      const _rk = String(msg.round);
+      if (!OG_DATA[_rk]) OG_DATA[_rk] = {};
+      OG_DATA[_rk][String(msg.candidate).trim()] = parseInt(msg.value) || 0;
+      if (currentPage === 'p1') renderDashboard();
+      else renderAnalytics();
+      showToast('📋 OG update from field');
+    }
+    if (msg.type === 'og_reset' && STATE.ogKey && msg.key === STATE.ogKey) {
+      if (msg.round) OG_DATA[msg.round] = {};
+      else OG_DATA = {};
+      if (currentPage === 'p1') renderDashboard();
+    }
+  };
+}
+
+// ── TOAST ─────────────────────────────────────────────────────────────────────
+let toastTimer;
+function showToast(msg, err = false) {
+  const t = document.getElementById('toastEl');
+  t.textContent = msg;
+  t.style.background = err ? 'var(--red)' : 'var(--green)';
+  t.style.color = err ? '#fff' : '#000';
+  t.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => t.classList.remove('show'), 2500);
+}
+
+// ── BOOT ─────────────────────────────────────────────────────────────────────
+window.addEventListener('DOMContentLoaded', () => {
+  connectDashWS();
+  doFetch();
+});
+</script>
+</body>
+</html>

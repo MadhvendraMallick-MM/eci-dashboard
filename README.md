@@ -16,6 +16,9 @@ The project combines data retrieval, visualization, and real-time communication 
 
 ---
 
+<img width="1280" height="680" alt="Screenshot 2026-06-11 at 9 47 38 PM" src="https://github.com/user-attachments/assets/42e9e353-179e-4f66-8cf5-1bbaeea302c0" />
+
+
 ## 📌 Overview
 
 Election-related information can involve multiple constituencies, candidates, voting rounds, and changing vote counts. Presenting these details clearly is important for understanding results and tracking developments.
